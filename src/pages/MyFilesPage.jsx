@@ -417,19 +417,19 @@ const MyFilesPage = () => {
                   Upload Files
                 </button>
               )}
-              <ShareModal
-                isOpen={shareModalOpen}
-                onClose={() => {
-                  setShareModalOpen(false);
-                  setSelectedFile(null);
-                  fetchFiles();
-                }}
-                file={selectedFile}
-              />
             </div>
           )}
         </div>
       </div>
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => {
+          setShareModalOpen(false);
+          setSelectedFile(null);
+          fetchFiles();
+        }}
+        file={selectedFile}
+      />
     </MainLayout>
   );
 };

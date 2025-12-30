@@ -197,23 +197,22 @@ export const fileAPI = FINAL_USE_MOCK ? mockFileAPI : {
     return api.post(`/restore/${fileId}/`);
   },
   
-  shareFile: (fileId, data) => api.post(`/share/${fileId}/`, data),
+  shareFile: (fileId, data) => {
+    console.log('🔗 Creating share link:', fileId);
+    return api.post(`/share/${fileId}/`, data);
+  },
   
-  // ✅ ADD THIS NEW FUNCTION
+  // ✅ ADD THIS FUNCTION
   shareViaEmail: (fileId, data) => {
     console.log('📧 Sharing via email:', fileId);
     return api.post(`/share/${fileId}/email/`, data);
   },
   
   getSharedFiles: () => api.get('/shared/'),
-  downloadFile: (fileId) => api.get(`/download/${fileId}/`, { responseType: 'blob' }),
-};
-
-// ==================== DASHBOARD API ====================
-export const dashboardAPI = FINAL_USE_MOCK ? mockDashboardAPI : {
-  getStats: () => {
-    console.log('📊 Getting dashboard stats');
-    return api.get('/dashboard/');
+  
+  downloadFile: (fileId) => {
+    console.log('📥 Downloading file:', fileId);
+    return api.get(`/download/${fileId}/`, { responseType: 'blob' });
   },
 };
 
