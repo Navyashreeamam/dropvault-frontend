@@ -23,7 +23,6 @@ import SettingsPage from './pages/SettingsPage';
 import TrashPage from './pages/TrashPage';
 import GoogleCallback from './components/Auth/GoogleCallback';
 import ProtectedRoute from './components/Common/ProtectedRoute';
-import SharedFilesPage from './pages/SharedFilesPage';
 
 
 function App() {
