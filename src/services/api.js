@@ -41,48 +41,11 @@ const api = axios.create({
 // ==================== REQUEST INTERCEPTOR ====================
 api.interceptors.request.use(
   (config) => {
-    // ✅ CRITICAL FIX: Get token and add to Authorization header
     const token = localStorage.getItem('token');
-    const sessionId = localStorage.getItem('sessionid');
     
-    // Add token to Authorization header if available
     if (token && token !== 'session-based-auth' && token !== 'session-based') {
       config.headers.Authorization = `Token ${token}`;
     }
-    
-    // Also add session ID as custom header (backup)
-    if (sessionId) {
-      config.headers['X-Session-ID'] = sessionId;
-    }
-    
-    console.log('📤 API Request:', {
-      method: config.method?.toUpperCase(),
-      url: config.url,
-      fullURL: `${config.baseURL}${config.url}`,
-      hasToken: !!token,
-      hasSessionId: !!sessionId
-    });
-    
-    return config;
-  },
-  (error) => {
-    console.error('❌ Request error:', error);
-    return Promise.reject(error);
-  }
-);
-
-// ==================== REQUEST INTERCEPTOR - SIMPLIFIED ====================
-api.interceptors.request.use(
-  (config) => {
-    // Get token from localStorage
-    const token = localStorage.getItem('token');
-    
-    // ✅ ONLY add Authorization header - NO custom headers
-    if (token && token !== 'session-based-auth' && token !== 'session-based') {
-      config.headers.Authorization = `Token ${token}`;
-    }
-    
-    // ❌ REMOVED: X-Session-ID header (causes CORS issues)
     
     console.log('📤 API Request:', {
       method: config.method?.toUpperCase(),
@@ -98,13 +61,65 @@ api.interceptors.request.use(
   }
 );
 
+// ==================== RESPONSE INTERCEPTOR ====================
+api.interceptors.response.use(
+  (response) => {
+    console.log('✅ API Response:', {
+      url: response.config.url,
+      status: response.status,
+      success: response.data?.success
+    });
+    return response;
+  },
+  (error) => {
+    console.error('❌ API Error:', {
+      url: error.config?.url,
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    
+    const { response } = error;
+    
+    if (!response) {
+      console.error('🔴 Network Error - Cannot connect to server');
+      toast.error('Cannot connect to server. Please check your connection.');
+      return Promise.reject(error);
+    }
+    
+    if (response?.status === 401) {
+      const isAuthEndpoint = error.config?.url?.includes('/login') || 
+                             error.config?.url?.includes('/signup') ||
+                             error.config?.url?.includes('/auth/check');
+      
+      if (!isAuthEndpoint) {
+        console.warn('⚠️ 401 - Session expired or not authenticated');
+      }
+    }
+    
+    if (response?.status === 403) {
+      console.warn('⚠️ 403 - Access denied');
+    }
+    
+    if (response?.status === 404) {
+      console.warn('⚠️ 404 - Resource not found:', error.config?.url);
+    }
+    
+    if (response?.status >= 500) {
+      console.error('🔴 500 - Server error');
+      toast.error('Server error. Please try again later.');
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
 // ==================== AUTH API ====================
 export const authAPI = FINAL_USE_MOCK ? mockAuthAPI : {
   login: async (credentials) => {
     console.log('🔐 Attempting login to:', `${API_BASE_URL}/login/`);
     const response = await api.post('/login/', credentials);
     
-    // ✅ CRITICAL: Store both token and sessionid
     if (response.data.success) {
       const { token, sessionid } = response.data;
       if (token) localStorage.setItem('token', token);
@@ -119,7 +134,6 @@ export const authAPI = FINAL_USE_MOCK ? mockAuthAPI : {
     console.log('📝 Attempting registration to:', `${API_BASE_URL}/signup/`);
     const response = await api.post('/signup/', userData);
     
-    // Store tokens on successful registration
     if (response.data.success) {
       const { token, sessionid } = response.data;
       if (token) localStorage.setItem('token', token);
@@ -133,7 +147,6 @@ export const authAPI = FINAL_USE_MOCK ? mockAuthAPI : {
     console.log('🔐 Google OAuth to:', `${API_BASE_URL}/auth/google/`);
     const response = await api.post('/auth/google/', { code });
     
-    // Store tokens on successful Google login
     if (response.data.success) {
       const { token, sessionid } = response.data;
       if (token) localStorage.setItem('token', token);
@@ -150,7 +163,6 @@ export const authAPI = FINAL_USE_MOCK ? mockAuthAPI : {
     } catch (e) {
       console.log('Logout API call failed, clearing local storage anyway');
     }
-    // Always clear local storage
     localStorage.removeItem('token');
     localStorage.removeItem('sessionid');
   },
@@ -167,7 +179,6 @@ export const authAPI = FINAL_USE_MOCK ? mockAuthAPI : {
 };
 
 // ==================== FILE API ====================
-
 export const fileAPI = FINAL_USE_MOCK ? mockFileAPI : {
   getAllFiles: () => {
     console.log('📁 Getting all files');
@@ -202,13 +213,15 @@ export const fileAPI = FINAL_USE_MOCK ? mockFileAPI : {
     return api.post(`/share/${fileId}/`, data);
   },
   
-  // ✅ ADD THIS FUNCTION
   shareViaEmail: (fileId, data) => {
     console.log('📧 Sharing via email:', fileId);
     return api.post(`/share/${fileId}/email/`, data);
   },
   
-  getSharedFiles: () => api.get('/shared/'),
+  getSharedFiles: () => {
+    console.log('🔗 Getting shared files');
+    return api.get('/shared/');
+  },
   
   downloadFile: (fileId) => {
     console.log('📥 Downloading file:', fileId);
@@ -216,12 +229,32 @@ export const fileAPI = FINAL_USE_MOCK ? mockFileAPI : {
   },
 };
 
+// ==================== DASHBOARD API ====================
+export const dashboardAPI = FINAL_USE_MOCK ? mockDashboardAPI : {
+  getStats: () => {
+    console.log('📊 Getting dashboard stats');
+    return api.get('/dashboard/');
+  },
+};
+
 // ==================== SETTINGS API ====================
 export const settingsAPI = FINAL_USE_MOCK ? mockSettingsAPI : {
-  updateProfile: (data) => api.put('/user/profile/', data),
-  updatePassword: (data) => api.put('/user/password/', data),
-  getPreferences: () => api.get('/user/preferences/'),
-  updatePreferences: (data) => api.put('/user/preferences/', data),
+  updateProfile: (data) => {
+    console.log('👤 Updating profile');
+    return api.put('/user/profile/', data);
+  },
+  updatePassword: (data) => {
+    console.log('🔒 Updating password');
+    return api.put('/user/password/', data);
+  },
+  getPreferences: () => {
+    console.log('⚙️ Getting preferences');
+    return api.get('/user/preferences/');
+  },
+  updatePreferences: (data) => {
+    console.log('⚙️ Updating preferences');
+    return api.put('/user/preferences/', data);
+  },
 };
 
 export default api;
