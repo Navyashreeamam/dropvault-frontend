@@ -40,39 +40,53 @@ const ShareModal = ({ isOpen, onClose, file }) => {
     }
   };
 
-  const handleEmailShare = async (e) => {
-    e.preventDefault();
+const handleEmailShare = async (e) => {
+  e.preventDefault();
 
-    if (!email.trim()) {
-      toast.error('Please enter an email address');
-      return;
-    }
+  if (!email.trim()) {
+    toast.error('Please enter an email address');
+    return;
+  }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      toast.error('Please enter a valid email address');
-      return;
-    }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    toast.error('Please enter a valid email address');
+    return;
+  }
 
-    setSending(true);
-    try {
-      await fileAPI.shareViaEmail(file.id, {
-        recipient_email: email,
-        message: message || `I'm sharing "${file.filename}" with you via DropVault.`
-      });
-      
-      toast.success(`File shared with ${email}!`);
-      setEmail('');
-      setMessage('');
-      onClose();
-    } catch (error) {
-      console.error('Email share error:', error);
-      const errorMsg = error.response?.data?.error || 'Failed to send email';
+  setSending(true);
+  try {
+    await fileAPI.shareViaEmail(file.id, {
+      recipient_email: email,
+      message: message || `I'm sharing "${file.filename}" with you via DropVault.`
+    });
+    
+    toast.success(`File shared with ${email}! Check spam folder.`);
+    setEmail('');
+    setMessage('');
+    onClose();
+  } catch (error) {
+    console.error('Email share error:', error);
+    
+    const errorData = error.response?.data;
+    
+    // ✅ Handle 403 - Email restriction
+    if (error.response?.status === 403) {
+      const allowedEmail = errorData?.allowed_email || 'navyashreeamam@gmail.com';
+      toast.error(
+        `Test Mode: Can only send to ${allowedEmail}. To enable all emails, verify a domain at resend.com/domains`,
+        { duration: 6000 }
+      );
+    } 
+    // Handle other errors
+    else {
+      const errorMsg = errorData?.error || errorData?.message || 'Failed to send email';
       toast.error(errorMsg);
-    } finally {
-      setSending(false);
     }
-  };
+  } finally {
+    setSending(false);
+  }
+};
 
   if (!isOpen || !file) return null;
 
