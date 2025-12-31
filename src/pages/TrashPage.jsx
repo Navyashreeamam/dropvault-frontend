@@ -18,13 +18,10 @@ const TrashPage = () => {
 const fetchTrash = async () => {
   try {
     const response = await fileAPI.getTrash();
-    console.log('📊 Trash response:', response.data);  // ← Add this to debug
+    console.log('🗑️ Trash response:', response.data);  // Debug
     
-    // ✅ Try multiple data structures
-    const trashedData = response.data.files || response.data || [];
-    
-    console.log('📊 Trashed files:', trashedData);  // ← Add this to debug
-    setTrashedFiles(trashedData);
+    // ✅ Now backend returns { files: [...], total_count: n }
+    setTrashedFiles(response.data.files || []);
   } catch (error) {
     console.error('❌ Trash error:', error);
     toast.error('Failed to load trash');

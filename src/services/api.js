@@ -179,6 +179,7 @@ export const authAPI = FINAL_USE_MOCK ? mockAuthAPI : {
 };
 
 // ==================== FILE API ====================
+
 export const fileAPI = FINAL_USE_MOCK ? mockFileAPI : {
   getAllFiles: () => {
     console.log('📁 Getting all files');
@@ -206,6 +207,17 @@ export const fileAPI = FINAL_USE_MOCK ? mockFileAPI : {
   restoreFile: (fileId) => {
     console.log('♻️ Restoring file:', fileId);
     return api.post(`/restore/${fileId}/`);
+  },
+  
+  permanentDelete: (fileId) => {
+    console.log('🗑️ Permanently deleting file:', fileId);
+    return api.delete(`/trash/permanent/${fileId}/`);
+  },
+  
+
+  emptyTrash: () => {
+    console.log('🗑️ Emptying trash');
+    return api.delete('/trash/empty/');
   },
   
   shareFile: (fileId, data) => {
