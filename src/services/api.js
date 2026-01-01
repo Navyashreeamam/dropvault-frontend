@@ -249,6 +249,43 @@ export const dashboardAPI = FINAL_USE_MOCK ? mockDashboardAPI : {
   },
 };
 
+
+
+// ==================== NOTIFICATION API ====================
+export const notificationAPI = FINAL_USE_MOCK ? {
+  // Mock implementation for development
+  getAll: () => Promise.resolve({ 
+    data: { 
+      success: true, 
+      notifications: [], 
+      unread_count: 0 
+    } 
+  }),
+  markAsRead: (id) => Promise.resolve({ data: { success: true } }),
+  markAllAsRead: () => Promise.resolve({ data: { success: true } }),
+  delete: (id) => Promise.resolve({ data: { success: true } }),
+} : {
+  getAll: () => {
+    console.log('🔔 Getting notifications');
+    return api.get('/notifications/');
+  },
+  
+  markAsRead: (notificationId) => {
+    console.log('🔔 Marking notification as read:', notificationId);
+    return api.post(`/notifications/${notificationId}/read/`);
+  },
+  
+  markAllAsRead: () => {
+    console.log('🔔 Marking all notifications as read');
+    return api.post('/notifications/read-all/');
+  },
+  
+  delete: (notificationId) => {
+    console.log('🔔 Deleting notification:', notificationId);
+    return api.delete(`/notifications/${notificationId}/delete/`);
+  },
+};
+
 // ==================== SETTINGS API ====================
 export const settingsAPI = FINAL_USE_MOCK ? mockSettingsAPI : {
   updateProfile: (data) => {
@@ -268,5 +305,6 @@ export const settingsAPI = FINAL_USE_MOCK ? mockSettingsAPI : {
     return api.put('/user/preferences/', data);
   },
 };
+
 
 export default api;

@@ -4,52 +4,77 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { dashboardAPI } from '../../services/api';
 import SignOutConfirmation from '../Common/SignOutConfirmation';
+import toast from 'react-hot-toast';
 import '../../styles/sidebar.css';
 
 const Sidebar = () => {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ storageUsed: 0, storageTotal: 10240 });
+  const [stats, setStats] = useState({ storageUsed: 0, storageTotal: 10737418240 }); // 10GB in bytes
   const [isOpen, setIsOpen] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     fetchStats();
   }, []);
 
-const fetchStats = async () => {
-  try {
-    const response = await dashboardAPI.getStats();
-    console.log('📊 Stats response:', response.data);
-    
-    // Handle different response formats
-    const statsData = response.data.data || response.data;
-    setStats({
-      storageUsed: statsData.storageUsed || 0,
-      storageTotal: statsData.storageTotal || 10240
-    });
-  } catch (error) {
-    console.error('Failed to load stats:', error);
-    
-    // Don't show error for 401/403 - just use defaults
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      console.warn('Using default stats due to auth issue');
-      setStats({ storageUsed: 0, storageTotal: 10240 });
-    } else {
-      // Only show error for real failures
-      console.error('Stats loading failed:', error.message);
+  const fetchStats = async () => {
+    try {
+      const response = await dashboardAPI.getStats();
+      console.log('📊 Stats response:', response.data);
+      
+      const statsData = response.data.data || response.data;
+      setStats({
+        storageUsed: statsData.storageUsed || statsData.storage_used || 0,
+        storageTotal: statsData.storageTotal || statsData.storage_total || 10737418240
+      });
+    } catch (error) {
+      console.error('Failed to load stats:', error);
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        console.warn('Using default stats due to auth issue');
+        setStats({ storageUsed: 0, storageTotal: 10737418240 });
+      }
     }
-  }
-};
+  };
 
   const handleLogoutClick = () => {
     setShowSignOutModal(true);
   };
 
-  const handleConfirmLogout = () => {
-    setShowSignOutModal(false);
-    logout();
-    navigate('/');
+  const handleConfirmLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      console.log('🚪 Starting logout...');
+      
+      // Call logout from AuthContext
+      await logout();
+      
+      console.log('✅ Logout successful');
+      
+      // Close modal
+      setShowSignOutModal(false);
+      
+      // Show success toast
+      toast.success('Signed out successfully');
+      
+      // Force navigation to landing page
+      navigate('/', { replace: true });
+      
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+      
+      // Even if API fails, clear local storage and redirect
+      localStorage.removeItem('token');
+      localStorage.removeItem('sessionid');
+      
+      setShowSignOutModal(false);
+      toast.success('Signed out');
+      navigate('/', { replace: true });
+      
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const handleCancelLogout = () => {
@@ -64,7 +89,10 @@ const fetchStats = async () => {
     setIsOpen(false);
   };
 
-  const storagePercent = ((stats.storageUsed / stats.storageTotal) * 100).toFixed(1);
+  // Calculate storage percentage
+  const storageInGB = stats.storageUsed / (1024 * 1024 * 1024);
+  const totalInGB = stats.storageTotal / (1024 * 1024 * 1024);
+  const storagePercent = totalInGB > 0 ? ((storageInGB / totalInGB) * 100).toFixed(1) : 0;
   const storageClass = storagePercent > 90 ? 'danger' : storagePercent > 70 ? 'warning' : '';
 
   return (
@@ -196,11 +224,13 @@ const fetchStats = async () => {
           </div>
         </nav>
 
-        {/* Storage Info - FIXED ALIGNMENT */}
+        {/* Storage Info */}
         <div className="sidebar-storage">
           <div className="storage-header">
             <span className="storage-label">Storage</span>
-            <span className="storage-value">{(stats.storageUsed / 1024).toFixed(1)} / {(stats.storageTotal / 1024).toFixed(0)} GB</span>
+            <span className="storage-value">
+              {storageInGB.toFixed(2)} / {totalInGB.toFixed(0)} GB
+            </span>
           </div>
           <div className="storage-bar">
             <div 
@@ -224,11 +254,15 @@ const fetchStats = async () => {
               <div className="user-email">{user?.email || 'user@email.com'}</div>
             </div>
           </div>
-          <button className="logout-btn" onClick={handleLogoutClick}>
+          <button 
+            className="logout-btn" 
+            onClick={handleLogoutClick}
+            disabled={isLoggingOut}
+          >
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            <span>Sign Out</span>
+            <span>{isLoggingOut ? 'Signing out...' : 'Sign Out'}</span>
           </button>
         </div>
       </aside>
@@ -238,7 +272,7 @@ const fetchStats = async () => {
         isOpen={showSignOutModal}
         onConfirm={handleConfirmLogout}
         onCancel={handleCancelLogout}
-        userName={user?.name || 'User'}
+        userName={user?.name || user?.email?.split('@')[0] || 'User'}
       />
     </>
   );

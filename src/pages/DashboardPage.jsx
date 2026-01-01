@@ -1,3 +1,5 @@
+// src/pages/DashboardPage.jsx
+
 import React, { useState, useEffect } from 'react';
 import MainLayout from '../components/Layout/MainLayout';
 import { dashboardAPI } from '../services/api';
