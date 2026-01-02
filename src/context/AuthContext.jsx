@@ -105,16 +105,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+
   const logout = async () => {
+    console.log('🚪 AuthContext: Starting logout...');
+    
     try {
+      // Try to call backend logout API
       await authAPI.logout();
+      console.log('✅ AuthContext: Backend logout successful');
     } catch (error) {
-      console.log('Logout API error (ignored):', error);
+      // Ignore API errors - we'll clear local state anyway
+      console.log('⚠️ AuthContext: Logout API error (ignored):', error.message);
     }
+    
+    // Always clear local storage
+    console.log('🧹 AuthContext: Clearing local storage...');
     localStorage.removeItem('token');
     localStorage.removeItem('sessionid');
+    
+    // Clear React state
     setUser(null);
     setIsAuthenticated(false);
+    
+    console.log('✅ AuthContext: Logout complete, state cleared');
+    
+    return true;
   };
 
   const updateUser = (updatedData) => {
@@ -136,5 +151,7 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+
 
 export default AuthContext;

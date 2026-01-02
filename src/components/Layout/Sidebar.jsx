@@ -10,7 +10,7 @@ import '../../styles/sidebar.css';
 const Sidebar = () => {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ storageUsed: 0, storageTotal: 10737418240 }); // 10GB in bytes
+  const [stats, setStats] = useState({ storageUsed: 0, storageTotal: 10737418240 });
   const [isOpen, setIsOpen] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -22,8 +22,6 @@ const Sidebar = () => {
   const fetchStats = async () => {
     try {
       const response = await dashboardAPI.getStats();
-      console.log('📊 Stats response:', response.data);
-      
       const statsData = response.data.data || response.data;
       setStats({
         storageUsed: statsData.storageUsed || statsData.storage_used || 0,
@@ -31,53 +29,56 @@ const Sidebar = () => {
       });
     } catch (error) {
       console.error('Failed to load stats:', error);
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        console.warn('Using default stats due to auth issue');
-        setStats({ storageUsed: 0, storageTotal: 10737418240 });
-      }
+      setStats({ storageUsed: 0, storageTotal: 10737418240 });
     }
   };
 
   const handleLogoutClick = () => {
+    console.log('🚪 Sign out button clicked');
     setShowSignOutModal(true);
   };
 
+  // ✅ FIXED: Improved logout handler
   const handleConfirmLogout = async () => {
+    console.log('🚪 Confirming logout...');
+    setIsLoggingOut(true);
+    
     try {
-      setIsLoggingOut(true);
-      console.log('🚪 Starting logout...');
-      
-      // Call logout from AuthContext
+      // Call logout from context
       await logout();
+      console.log('✅ Logout function completed');
       
-      console.log('✅ Logout successful');
-      
-      // Close modal
+      // Close modal first
       setShowSignOutModal(false);
       
-      // Show success toast
-      toast.success('Signed out successfully');
+      // Show success message
+      toast.success('Signed out successfully!');
       
-      // Force navigation to landing page
-      navigate('/', { replace: true });
+      // Navigate to home page
+      console.log('🏠 Navigating to home page...');
+      
+      // Use window.location for guaranteed redirect
+      window.location.href = '/';
       
     } catch (error) {
       console.error('❌ Logout error:', error);
       
-      // Even if API fails, clear local storage and redirect
+      // Force logout even on error
       localStorage.removeItem('token');
       localStorage.removeItem('sessionid');
       
       setShowSignOutModal(false);
       toast.success('Signed out');
-      navigate('/', { replace: true });
       
+      // Force redirect
+      window.location.href = '/';
     } finally {
       setIsLoggingOut(false);
     }
   };
 
   const handleCancelLogout = () => {
+    console.log('❌ Logout cancelled');
     setShowSignOutModal(false);
   };
 
@@ -89,7 +90,7 @@ const Sidebar = () => {
     setIsOpen(false);
   };
 
-  // Calculate storage percentage
+  // Calculate storage
   const storageInGB = stats.storageUsed / (1024 * 1024 * 1024);
   const totalInGB = stats.storageTotal / (1024 * 1024 * 1024);
   const storagePercent = totalInGB > 0 ? ((storageInGB / totalInGB) * 100).toFixed(1) : 0;
@@ -258,6 +259,7 @@ const Sidebar = () => {
             className="logout-btn" 
             onClick={handleLogoutClick}
             disabled={isLoggingOut}
+            type="button"
           >
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -268,12 +270,14 @@ const Sidebar = () => {
       </aside>
 
       {/* Sign Out Confirmation Modal */}
-      <SignOutConfirmation 
-        isOpen={showSignOutModal}
-        onConfirm={handleConfirmLogout}
-        onCancel={handleCancelLogout}
-        userName={user?.name || user?.email?.split('@')[0] || 'User'}
-      />
+      {showSignOutModal && (
+        <SignOutConfirmation 
+          isOpen={showSignOutModal}
+          onConfirm={handleConfirmLogout}
+          onCancel={handleCancelLogout}
+          userName={user?.name || user?.email?.split('@')[0] || 'User'}
+        />
+      )}
     </>
   );
 };

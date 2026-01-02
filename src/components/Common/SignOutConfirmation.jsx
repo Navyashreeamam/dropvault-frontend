@@ -3,10 +3,35 @@ import React from 'react';
 import '../../styles/modal.css';
 
 const SignOutConfirmation = ({ isOpen, onConfirm, onCancel, userName }) => {
+  // Don't render if not open
   if (!isOpen) return null;
 
+  // Handle confirm click
+  const handleConfirm = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('✅ Modal: Confirm clicked');
+    onConfirm();
+  };
+
+  // Handle cancel click
+  const handleCancel = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('❌ Modal: Cancel clicked');
+    onCancel();
+  };
+
+  // Handle overlay click
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget) {
+      console.log('❌ Modal: Overlay clicked');
+      onCancel();
+    }
+  };
+
   return (
-    <div className="modal-overlay" onClick={onCancel}>
+    <div className="modal-overlay" onClick={handleOverlayClick}>
       <div className="modal-content signout-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-icon">
           <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -30,10 +55,18 @@ const SignOutConfirmation = ({ isOpen, onConfirm, onCancel, userName }) => {
         </p>
         
         <div className="modal-actions">
-          <button className="modal-btn modal-btn-cancel" onClick={onCancel}>
+          <button 
+            type="button"
+            className="modal-btn modal-btn-cancel" 
+            onClick={handleCancel}
+          >
             Cancel
           </button>
-          <button className="modal-btn modal-btn-confirm" onClick={onConfirm}>
+          <button 
+            type="button"
+            className="modal-btn modal-btn-confirm" 
+            onClick={handleConfirm}
+          >
             Sign Out
           </button>
         </div>
