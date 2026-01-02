@@ -239,12 +239,10 @@ const Sidebar = () => {
               style={{ width: `${Math.min(storagePercent, 100)}%` }}
             />
           </div>
-          <div className="storage-footer">
-            <span className="storage-percent">{storagePercent}% used</span>
-          </div>
         </div>
 
-        {/* User Footer */}
+
+        {/* User Footer fix here */}
         <div className="sidebar-user">
           <div className="user-info">
             <div className="user-avatar">

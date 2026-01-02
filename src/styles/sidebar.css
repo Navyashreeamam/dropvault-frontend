@@ -358,3 +358,32 @@
     display: block;
   }
 }
+
+/* ==================== FORCE CLICKABILITY FIX ==================== */
+.sidebar {
+  pointer-events: auto !important;
+  z-index: 1000 !important;
+}
+
+.sidebar * {
+  pointer-events: auto !important;
+}
+
+.nav-link {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.logout-btn {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.sidebar-logo {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
