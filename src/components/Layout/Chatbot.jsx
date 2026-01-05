@@ -1,4 +1,4 @@
-//src/components/Layout/chatbot.jsx
+//src/components/Layout/Chatbot.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import '../../styles/chatbot.css';
 
