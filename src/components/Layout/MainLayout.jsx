@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import Chatbot from './chatbot';  // ✅ ADD THIS LINE
 import { useAuth } from '../../context/AuthContext';
 import { notificationAPI } from '../../services/api';
 import '../../styles/layout.css';
@@ -231,6 +232,9 @@ const MainLayout = ({ children }) => {
           </div>
         </div>
       </main>
+
+      {/* ✅ ADD CHATBOT HERE - It will appear on ALL pages */}
+      <Chatbot />
     </div>
   );
 };
