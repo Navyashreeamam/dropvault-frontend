@@ -21,6 +21,7 @@ import UploadPage from './pages/UploadPage';
 import SharedFilesPage from './pages/SharedFilesPage';
 import SettingsPage from './pages/SettingsPage';
 import TrashPage from './pages/TrashPage';
+import PricingPage from './pages/PricingPage';
 import GoogleCallback from './components/Auth/GoogleCallback';
 import ProtectedRoute from './components/Common/ProtectedRoute';
 
@@ -96,6 +97,11 @@ function App() {
           <Route path="/trash" element={
             <ProtectedRoute>
               <TrashPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/pricing" element={
+            <ProtectedRoute>
+              <PricingPage />
             </ProtectedRoute>
           } />
 

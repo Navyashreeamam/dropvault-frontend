@@ -38,39 +38,23 @@ const Sidebar = () => {
     setShowSignOutModal(true);
   };
 
-  // ✅ FIXED: Improved logout handler
   const handleConfirmLogout = async () => {
     console.log('🚪 Confirming logout...');
     setIsLoggingOut(true);
     
     try {
-      // Call logout from context
       await logout();
       console.log('✅ Logout function completed');
-      
-      // Close modal first
       setShowSignOutModal(false);
-      
-      // Show success message
       toast.success('Signed out successfully!');
-      
-      // Navigate to home page
       console.log('🏠 Navigating to home page...');
-      
-      // Use window.location for guaranteed redirect
       window.location.href = '/';
-      
     } catch (error) {
       console.error('❌ Logout error:', error);
-      
-      // Force logout even on error
       localStorage.removeItem('token');
       localStorage.removeItem('sessionid');
-      
       setShowSignOutModal(false);
       toast.success('Signed out');
-      
-      // Force redirect
       window.location.href = '/';
     } finally {
       setIsLoggingOut(false);
@@ -221,6 +205,21 @@ const Sidebar = () => {
                 </span>
                 <span className="nav-label">Settings</span>
               </NavLink>
+
+              {/* ✅ NEW: Pricing/Upgrade Link - Below Settings */}
+              <NavLink 
+                to="/pricing" 
+                className={({ isActive }) => `nav-link pricing-link ${isActive ? 'active' : ''}`}
+                onClick={closeSidebar}
+              >
+                <span className="nav-icon">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                </span>
+                <span className="nav-label">Upgrade Storage</span>
+                <span className="pro-badge">PRO</span>
+              </NavLink>
             </div>
           </div>
         </nav>
@@ -239,10 +238,15 @@ const Sidebar = () => {
               style={{ width: `${Math.min(storagePercent, 100)}%` }}
             />
           </div>
+          {/* ✅ NEW: Upgrade prompt when storage is getting full */}
+          {storagePercent > 50 && (
+            <NavLink to="/pricing" className="storage-upgrade-hint" onClick={closeSidebar}>
+              Need more space? Upgrade now →
+            </NavLink>
+          )}
         </div>
 
-
-        {/* User Footer fix here */}
+        {/* User Footer */}
         <div className="sidebar-user">
           <div className="user-info">
             <div className="user-avatar">
