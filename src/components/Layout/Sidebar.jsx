@@ -238,7 +238,9 @@ const Sidebar = () => {
               style={{ width: `${Math.min(storagePercent, 100)}%` }}
             />
           </div>
-          {/* ✅ NEW: Upgrade prompt when storage is getting full */}
+          <div className="storage-footer">
+            <span className="storage-percent">{storagePercent}% used</span>
+          </div>
           {storagePercent > 50 && (
             <NavLink to="/pricing" className="storage-upgrade-hint" onClick={closeSidebar}>
               Need more space? Upgrade now →

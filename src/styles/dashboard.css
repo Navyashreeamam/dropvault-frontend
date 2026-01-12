@@ -116,6 +116,14 @@
   transition: width 0.5s ease;
 }
 
+.progress-bar.warning {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.progress-bar.danger {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
