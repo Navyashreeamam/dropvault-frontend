@@ -34,7 +34,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 300000,
   withCredentials: true,
 });
 
@@ -306,5 +306,28 @@ export const settingsAPI = FINAL_USE_MOCK ? mockSettingsAPI : {
   },
 };
 
+
+export const uploadFile = async (formData, onProgress) => {
+  try {
+    const response = await api.post('/api/upload/', formData, {
+      timeout: 600000,  // ✅ 10 minutes for uploads
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress) {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          onProgress(percentCompleted);
+        }
+      },
+    });
+    return response;
+  } catch (error) {
+    console.error('Upload error:', error);
+    throw error;
+  }
+};
 
 export default api;
