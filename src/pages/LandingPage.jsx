@@ -179,7 +179,7 @@ const LandingPage = () => {
             </div>
             <span className="footer-logo-text">DropVault</span>
           </div>
-          <p className="footer-copyright">© 2025 DropVault. All rights reserved.</p>
+          <p className="footer-copyright">© 2026 DropVault. All rights reserved.</p>
         </div>
       </footer>
     </div>
