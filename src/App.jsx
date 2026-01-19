@@ -4,17 +4,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 
-// ==================== IMPORT PAGES ====================
-// If your files are in src/pages/ (NOT in AuthPages folder)
+// Pages
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-
-// OR if they ARE in AuthPages folder, use:
-// import LandingPage from './pages/AuthPages/LandingPage';
-// import LoginPage from './pages/AuthPages/LoginPage';
-// import RegisterPage from './pages/AuthPages/RegisterPage';
-
+import VerifyPendingPage from './pages/VerifyPendingPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import DashboardPage from './pages/DashboardPage';
 import MyFilesPage from './pages/MyFilesPage';
 import UploadPage from './pages/UploadPage';
@@ -111,7 +106,6 @@ function App() {
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
-          <Route path="/shared" element={<ProtectedRoute><SharedFilesPage /></ProtectedRoute>} />
         </Routes>
       </Router>
     </AuthProvider>

@@ -14,7 +14,6 @@ const VerifyPendingPage = () => {
   const [countdown, setCountdown] = useState(0);
 
   useEffect(() => {
-    // Get email from navigation state or localStorage
     const stateEmail = location.state?.email;
     const storedEmail = localStorage.getItem('pendingVerificationEmail');
     
@@ -24,13 +23,11 @@ const VerifyPendingPage = () => {
     } else if (storedEmail) {
       setEmail(storedEmail);
     } else {
-      // No email found, redirect to register
       navigate('/register');
     }
   }, [location, navigate]);
 
   useEffect(() => {
-    // Countdown timer for resend button
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
@@ -45,9 +42,7 @@ const VerifyPendingPage = () => {
     try {
       const response = await fetch(`${API_URL}/api/resend-verification/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
       
@@ -55,7 +50,7 @@ const VerifyPendingPage = () => {
       
       if (response.ok && data.success) {
         toast.success('Verification email sent! Check your inbox.');
-        setCountdown(60); // 60 second cooldown
+        setCountdown(60);
       } else {
         toast.error(data.error || 'Failed to resend email');
       }
@@ -74,7 +69,6 @@ const VerifyPendingPage = () => {
 
   return (
     <div className="auth-page">
-      {/* Background Elements */}
       <div className="auth-bg">
         <div className="auth-bg-shape auth-bg-shape-1"></div>
         <div className="auth-bg-shape auth-bg-shape-2"></div>
@@ -83,7 +77,6 @@ const VerifyPendingPage = () => {
 
       <div className="verify-pending-container">
         <div className="verify-pending-card">
-          {/* Email Icon */}
           <div className="verify-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -97,9 +90,7 @@ const VerifyPendingPage = () => {
 
           <h1>Check your email</h1>
           
-          <p className="verify-message">
-            We've sent a verification link to:
-          </p>
+          <p className="verify-message">We've sent a verification link to:</p>
           
           <div className="verify-email-display">
             <strong>{email}</strong>
@@ -133,10 +124,7 @@ const VerifyPendingPage = () => {
               )}
             </button>
 
-            <button 
-              onClick={handleChangeEmail}
-              className="change-email-btn"
-            >
+            <button onClick={handleChangeEmail} className="change-email-btn">
               Use different email
             </button>
           </div>

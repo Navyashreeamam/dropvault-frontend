@@ -844,6 +844,7 @@
 .verify-icon.verifying {
   background: transparent;
   border: none;
+  animation: none;
 }
 
 .verify-spinner {
@@ -1023,7 +1024,6 @@
   height: 18px;
 }
 
-/* Verification Notice in Register */
 .verification-notice {
   display: flex;
   align-items: center;
@@ -1047,38 +1047,6 @@
   color: #475569;
 }
 
-/* Password Strength */
-.password-strength {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
-
-.strength-bars {
-  display: flex;
-  gap: 0.25rem;
-  flex: 1;
-}
-
-.strength-bar {
-  height: 4px;
-  flex: 1;
-  background: #e2e8f0;
-  border-radius: 2px;
-  transition: background 0.3s ease;
-}
-
-.strength-bar.active {
-  background: currentColor;
-}
-
-.password-strength span {
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-/* Responsive */
 @media (max-width: 768px) {
   .verify-pending-card {
     padding: 2rem 1.5rem;

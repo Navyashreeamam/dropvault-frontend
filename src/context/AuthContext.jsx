@@ -1,10 +1,9 @@
+// src/context/AuthContext.jsx - COMPLETE FIXED FILE
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authAPI } from '../services/api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://dropvault-2.onrender.com';
 
 const AuthContext = createContext(null);
-
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -32,36 +31,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const checkAuth = async () => {
-    const token = localStorage.getItem('token');
-    
-    console.log('🔍 Checking auth, token exists:', !!token);
-    
-    if (token && token !== 'session-based' && token !== 'session-based-auth') {
-      try {
-        const response = await authAPI.getProfile();
-        console.log('✅ Auth check response:', response.data);
-        
-        const userData = response.data.data || response.data.user || response.data;
-        
-        if (userData && (userData.id || userData.email)) {
-          setUser(userData);
-          setIsAuthenticated(true);
-          console.log('✅ User authenticated:', userData.email);
-        }
-      } catch (error) {
-        console.error('❌ Auth check failed:', error);
-        // Token invalid - clear it
-        localStorage.removeItem('token');
-        localStorage.removeItem('sessionid');
-        setUser(null);
-        setIsAuthenticated(false);
-      }
-    }
-    
-    setLoading(false);
-  };
-
   const verifyAuth = async (authToken) => {
     try {
       const response = await fetch(`${API_URL}/api/auth/check/`, {
@@ -77,7 +46,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(data.user));
       } else {
         // Token invalid - clear auth
-        logout();
+        handleLogout();
       }
     } catch (error) {
       console.error('Auth verification error:', error);
@@ -132,7 +101,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-
   const loginWithGoogle = async (code) => {
     try {
       const response = await fetch(`${API_URL}/api/auth/google/`, {
@@ -169,46 +137,53 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = async () => {
-      try {
-        if (token) {
-          await fetch(`${API_URL}/api/logout/`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Token ${token}`,
-            },
-          });
-        }
-      } catch (error) {
-        console.error('Logout error:', error);
-      } finally {
-        setUser(null);
-        setToken(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('sessionid');
-        localStorage.removeItem('pendingVerificationEmail');
-      }
-    };
-
-    const value = {
-      user,
-      setUser,
-      token,
-      setToken,
-      loading,
-      login,
-      loginWithGoogle,
-      logout,
-      isAuthenticated: !!token && !!user,
-    };
-
-    return (
-      <AuthContext.Provider value={value}>
-        {children}
-      </AuthContext.Provider>
-    );
+  const handleLogout = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('sessionid');
+    localStorage.removeItem('pendingVerificationEmail');
   };
+
+  const logout = async () => {
+    try {
+      if (token) {
+        await fetch(`${API_URL}/api/logout/`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Token ${token}`,
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      handleLogout();
+    }
+  };
+
+  // Compute isAuthenticated from token and user
+  const isAuthenticated = !!token && !!user;
+
+  const value = {
+    user,
+    setUser,
+    token,
+    setToken,
+    loading,
+    login,
+    loginWithGoogle,
+    logout,
+    isAuthenticated,
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
