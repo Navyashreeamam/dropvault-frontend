@@ -45,7 +45,7 @@ const LoginPage = () => {
     }
   };
 
-// REPLACE this function only:
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -65,6 +65,12 @@ const LoginPage = () => {
       if (result.success) {
         toast.success('Welcome back!');
         navigate('/dashboard');
+      } else if (result.requires_verification) {
+        // Email not verified - redirect to verification page
+        toast.error('Please verify your email first');
+        navigate('/verify-pending', { 
+          state: { email: formData.email } 
+        });
       } else {
         toast.error(result.error || 'Login failed. Please check your credentials.');
         setErrors({ 

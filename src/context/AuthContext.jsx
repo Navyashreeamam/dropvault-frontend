@@ -1,23 +1,35 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
 
+const API_URL = process.env.REACT_APP_API_URL || 'https://dropvault-2.onrender.com';
+
 const AuthContext = createContext(null);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    checkAuth();
+    // Check for existing auth on mount
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    
+    if (storedToken) {
+      setToken(storedToken);
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          console.error('Error parsing stored user:', e);
+        }
+      }
+      // Verify token is still valid
+      verifyAuth(storedToken);
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const checkAuth = async () => {
@@ -50,108 +62,161 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   };
 
+  const verifyAuth = async (authToken) => {
+    try {
+      const response = await fetch(`${API_URL}/api/auth/check/`, {
+        headers: {
+          'Authorization': `Token ${authToken}`,
+        },
+      });
+      
+      const data = await response.json();
+      
+      if (data.authenticated) {
+        setUser(data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
+      } else {
+        // Token invalid - clear auth
+        logout();
+      }
+    } catch (error) {
+      console.error('Auth verification error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const login = async (credentials) => {
     try {
-      console.log('🔐 AuthContext: Calling login API');
-      const response = await authAPI.login(credentials);
-      console.log('✅ AuthContext: Login response:', response.data);
-      
-      const { success, token, sessionid, user: userData, error } = response.data;
-      
-      if (success && userData) {
-        // Token is already stored by authAPI.login
-        setUser(userData);
-        setIsAuthenticated(true);
+      const response = await fetch(`${API_URL}/api/login/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Successful login
+        setToken(data.token);
+        setUser(data.user);
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        if (data.sessionid) {
+          localStorage.setItem('sessionid', data.sessionid);
+        }
         return { success: true };
-      } else {
+      } else if (response.status === 403 && data.requires_verification) {
+        // Email not verified
         return { 
           success: false, 
-          error: error || 'Login failed' 
+          requires_verification: true,
+          email: data.email,
+          error: data.error || 'Please verify your email first'
+        };
+      } else {
+        // Other errors
+        return { 
+          success: false, 
+          error: data.error || 'Login failed' 
         };
       }
     } catch (error) {
-      console.error('❌ AuthContext: Login error:', error);
+      console.error('Login error:', error);
       return { 
         success: false, 
-        error: error.response?.data?.error || error.message || 'Login failed'
+        error: 'Network error. Please try again.' 
       };
     }
   };
 
-  const register = async (userData) => {
+
+  const loginWithGoogle = async (code) => {
     try {
-      console.log('📝 AuthContext: Calling register API');
-      const response = await authAPI.register(userData);
-      console.log('✅ AuthContext: Register response:', response.data);
-      
-      const { success, user: newUser, error } = response.data;
-      
-      if (success && newUser) {
-        setUser(newUser);
-        setIsAuthenticated(true);
+      const response = await fetch(`${API_URL}/api/auth/google/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setToken(data.token);
+        setUser(data.user);
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        if (data.sessionid) {
+          localStorage.setItem('sessionid', data.sessionid);
+        }
         return { success: true };
       } else {
         return { 
           success: false, 
-          error: error || 'Registration failed' 
+          error: data.error || 'Google login failed' 
         };
       }
     } catch (error) {
-      console.error('❌ AuthContext: Register error:', error);
+      console.error('Google login error:', error);
       return { 
         success: false, 
-        error: error.response?.data?.error || error.message || 'Registration failed'
+        error: 'Network error. Please try again.' 
       };
     }
   };
-
 
   const logout = async () => {
-    console.log('🚪 AuthContext: Starting logout...');
-    
-    try {
-      // Try to call backend logout API
-      await authAPI.logout();
-      console.log('✅ AuthContext: Backend logout successful');
-    } catch (error) {
-      // Ignore API errors - we'll clear local state anyway
-      console.log('⚠️ AuthContext: Logout API error (ignored):', error.message);
-    }
-    
-    // Always clear local storage
-    console.log('🧹 AuthContext: Clearing local storage...');
-    localStorage.removeItem('token');
-    localStorage.removeItem('sessionid');
-    
-    // Clear React state
-    setUser(null);
-    setIsAuthenticated(false);
-    
-    console.log('✅ AuthContext: Logout complete, state cleared');
-    
-    return true;
-  };
+      try {
+        if (token) {
+          await fetch(`${API_URL}/api/logout/`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Token ${token}`,
+            },
+          });
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+      } finally {
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('sessionid');
+        localStorage.removeItem('pendingVerificationEmail');
+      }
+    };
 
-  const updateUser = (updatedData) => {
-    setUser(prev => ({ ...prev, ...updatedData }));
-  };
-
-  return (
-    <AuthContext.Provider value={{
+    const value = {
       user,
+      setUser,
+      token,
+      setToken,
       loading,
-      isAuthenticated,
       login,
-      register,
+      loginWithGoogle,
       logout,
-      checkAuth,
-      updateUser
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
+      isAuthenticated: !!token && !!user,
+    };
 
+    return (
+      <AuthContext.Provider value={value}>
+        {children}
+      </AuthContext.Provider>
+    );
+  };
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 
 export default AuthContext;

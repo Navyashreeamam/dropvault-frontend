@@ -68,6 +68,10 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/google-callback" element={<GoogleCallback />} />
 
+          {/* Email Verification Routes */}
+          <Route path="/verify-pending" element={<VerifyPendingPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+
           {/* Protected Routes */}
           <Route path="/dashboard" element={
             <ProtectedRoute>
