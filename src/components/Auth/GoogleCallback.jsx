@@ -1,163 +1,237 @@
 // src/components/Auth/GoogleCallback.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { authAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
 const GoogleCallback = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { checkAuth } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const auth = useAuth();  // ✅ Get entire auth object
   const [status, setStatus] = useState('processing');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [error, setError] = useState('');
+  
+  // Prevent duplicate calls
+  const isProcessingRef = useRef(false);
+  const hasProcessedRef = useRef(false);
 
   useEffect(() => {
-    handleGoogleCallback();
-  }, []);
-
-  const handleGoogleCallback = async () => {
-    try {
-      const error = searchParams.get('error');
-      if (error) {
-        console.error('❌ Google error:', error);
-        setStatus('error');
-        setErrorMessage('Google login was cancelled');
-        toast.error('Google login cancelled');
-        setTimeout(() => navigate('/login'), 2000);
+    const handleCallback = async () => {
+      // Prevent duplicate processing
+      if (isProcessingRef.current || hasProcessedRef.current) {
+        console.log('⚠️ Already processing or processed, skipping');
         return;
       }
-
-      const code = searchParams.get('code');
       
-      if (!code) {
-        console.error('❌ No code received');
+      isProcessingRef.current = true;
+      
+      try {
+        const code = searchParams.get('code');
+        const errorParam = searchParams.get('error');
+
+        // Clear URL parameters immediately
+        if (code || errorParam) {
+          setSearchParams({}, { replace: true });
+        }
+
+        // Handle OAuth errors
+        if (errorParam) {
+          console.error('❌ Google OAuth error:', errorParam);
+          setStatus('error');
+          setError('Google authentication was cancelled or failed');
+          toast.error('Google authentication cancelled');
+          setTimeout(() => navigate('/login'), 2000);
+          return;
+        }
+
+        // Check if code exists
+        if (!code) {
+          console.error('❌ No authorization code received');
+          setStatus('error');
+          setError('No authorization code received from Google');
+          toast.error('Authentication failed - no code received');
+          setTimeout(() => navigate('/login'), 2000);
+          return;
+        }
+
+        console.log('📧 Google callback - processing code');
+
+        // ✅ Check for googleLogin function
+        const googleLoginFn = auth.googleLogin || auth.loginWithGoogle;
+        
+        if (typeof googleLoginFn !== 'function') {
+          console.error('❌ googleLogin function not found in auth:', Object.keys(auth));
+          setStatus('error');
+          setError('Authentication system error');
+          toast.error('Authentication system error. Please try again.');
+          setTimeout(() => navigate('/login'), 2000);
+          return;
+        }
+
+        // Call the API
+        console.log('🔐 Calling Google login API...');
+        const result = await googleLoginFn(code);
+        
+        hasProcessedRef.current = true;
+
+        if (result.success) {
+          console.log('✅ Google login successful!');
+          setStatus('success');
+          toast.success('Welcome to DropVault!');
+          
+          setTimeout(() => {
+            navigate('/dashboard', { replace: true });
+          }, 500);
+        } else {
+          console.error('❌ Google login failed:', result.error);
+          setStatus('error');
+          setError(result.error || 'Authentication failed');
+          toast.error(result.error || 'Google login failed');
+          setTimeout(() => navigate('/login'), 2000);
+        }
+      } catch (err) {
+        console.error('❌ Google callback error:', err);
         setStatus('error');
-        setErrorMessage('No authorization code received');
+        setError(err.message || 'An unexpected error occurred');
+        toast.error('Authentication failed. Please try again.');
         setTimeout(() => navigate('/login'), 2000);
-        return;
+      } finally {
+        isProcessingRef.current = false;
       }
+    };
 
-      console.log('🔐 Exchanging code for token...');
-      setStatus('authenticating');
-
-      const response = await authAPI.googleLogin(code);
-      console.log('🔐 Google response:', response.data);
-
-      if (response.data.success) {
-        // Token already stored by authAPI.googleLogin
-        await checkAuth();
-        toast.success(`Welcome, ${response.data.user?.name || 'User'}!`);
-        navigate('/dashboard');
-      } else {
-        throw new Error(response.data.error || 'Google login failed');
-      }
-
-    } catch (err) {
-      console.error('❌ Google callback error:', err);
-      
-      // Extract meaningful error message
-      let errorMsg = 'Google authentication failed';
-      
-      if (err.response?.data?.error) {
-        errorMsg = err.response.data.error;
-      } else if (err.message) {
-        errorMsg = err.message;
-      }
-      
-      // Check for specific errors
-      if (errorMsg.includes('not configured')) {
-        errorMsg = 'Google login is not set up on the server. Please use email/password.';
-      }
-      
-      console.error('Error message:', errorMsg);
-      
-      setStatus('error');
-      setErrorMessage(errorMsg);
-      toast.error(errorMsg);
-      setTimeout(() => navigate('/login'), 3000);
-    }
-  };
+    // Small delay to ensure context is ready
+    const timer = setTimeout(handleCallback, 100);
+    return () => clearTimeout(timer);
+  }, [auth, searchParams, setSearchParams, navigate]);
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '20px'
-    }}>
-      <div style={{
-        background: 'white',
-        padding: '3rem',
-        borderRadius: '1rem',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-        textAlign: 'center',
-        maxWidth: '400px',
-        width: '100%'
-      }}>
-        {status === 'processing' || status === 'authenticating' ? (
-          <>
-            <div style={{
-              width: '60px',
-              height: '60px',
-              border: '4px solid #e2e8f0',
-              borderTopColor: '#667eea',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 1.5rem'
-            }}></div>
-            <h2 style={{ color: '#1e293b', marginBottom: '0.5rem' }}>
-              {status === 'processing' ? 'Processing...' : 'Signing you in...'}
-            </h2>
-            <p style={{ color: '#64748b' }}>
-              Please wait while we complete your Google login
-            </p>
-          </>
-        ) : (
-          <>
-            <div style={{
-              width: '60px',
-              height: '60px',
-              background: '#fee2e2',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 1.5rem',
-              fontSize: '2rem'
-            }}>❌</div>
-            <h2 style={{ color: '#1e293b', marginBottom: '0.5rem' }}>
-              Login Failed
-            </h2>
-            <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
-              {errorMessage}
-            </p>
-            <button
-              onClick={() => navigate('/login')}
-              style={{
-                background: '#667eea',
-                color: 'white',
-                border: 'none',
-                padding: '0.75rem 2rem',
-                borderRadius: '0.5rem',
-                cursor: 'pointer',
-                fontSize: '1rem'
-              }}
-            >
-              Back to Login
-            </button>
-          </>
-        )}
-      </div>
-      
+    <div className="google-callback-page">
       <style>{`
+        .google-callback-page {
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+        }
+        
+        .callback-container {
+          background: white;
+          padding: 3rem;
+          border-radius: 1rem;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+          text-align: center;
+          max-width: 400px;
+          width: 90%;
+        }
+        
+        .callback-icon {
+          width: 80px;
+          height: 80px;
+          margin: 0 auto 1.5rem;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .callback-icon.processing {
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+        }
+        
+        .callback-icon.success {
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+        }
+        
+        .callback-icon.error {
+          background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
+        }
+        
+        .spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid rgba(99, 102, 241, 0.2);
+          border-top-color: #6366f1;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+        
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
+        
+        .callback-icon svg {
+          width: 40px;
+          height: 40px;
+        }
+        
+        .callback-icon.success svg {
+          stroke: #10b981;
+        }
+        
+        .callback-icon.error svg {
+          stroke: #ef4444;
+        }
+        
+        .callback-title {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #1e293b;
+          margin-bottom: 0.5rem;
+        }
+        
+        .callback-message {
+          color: #64748b;
+          font-size: 0.9375rem;
+        }
+        
+        .callback-error {
+          color: #ef4444;
+          font-size: 0.875rem;
+          margin-top: 1rem;
+          padding: 0.75rem;
+          background: rgba(239, 68, 68, 0.1);
+          border-radius: 0.5rem;
+        }
       `}</style>
+
+      <div className="callback-container">
+        {status === 'processing' && (
+          <>
+            <div className="callback-icon processing">
+              <div className="spinner"></div>
+            </div>
+            <h2 className="callback-title">Signing you in...</h2>
+            <p className="callback-message">Please wait while we complete your Google sign-in.</p>
+          </>
+        )}
+
+        {status === 'success' && (
+          <>
+            <div className="callback-icon success">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="callback-title">Welcome!</h2>
+            <p className="callback-message">Redirecting to your dashboard...</p>
+          </>
+        )}
+
+        {status === 'error' && (
+          <>
+            <div className="callback-icon error">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h2 className="callback-title">Authentication Failed</h2>
+            <p className="callback-message">Redirecting to login page...</p>
+            {error && <p className="callback-error">{error}</p>}
+          </>
+        )}
+      </div>
     </div>
   );
 };

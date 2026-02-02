@@ -1,102 +1,65 @@
 // src/pages/VerifyEmailPage.jsx
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { authAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import '../styles/auth.css';
-
-const API_URL = process.env.REACT_APP_API_URL || 'https://dropvault-2.onrender.com';
 
 const VerifyEmailPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setUser, setToken } = useAuth();
-  
-  const [status, setStatus] = useState('verifying');
-  const [message, setMessage] = useState('');
-  const [email, setEmail] = useState('');
-  const [resending, setResending] = useState(false);
+  const [verifying, setVerifying] = useState(true);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    
-    if (!token) {
-      setStatus('error');
-      setMessage('Invalid verification link. No token provided.');
-      return;
-    }
-
-    verifyEmail(token);
-  }, [searchParams]);
-
-  const verifyEmail = async (token) => {
-    try {
-      const response = await fetch(`${API_URL}/api/verify-email-token/?token=${token}`);
-      const data = await response.json();
-
-      if (data.success) {
-        setStatus('success');
-        setMessage(data.message || 'Email verified successfully!');
-        
-        if (data.token) {
-          localStorage.setItem('token', data.token);
-          setToken(data.token);
-        }
-        if (data.sessionid) {
-          localStorage.setItem('sessionid', data.sessionid);
-        }
-        if (data.user) {
-          localStorage.setItem('user', JSON.stringify(data.user));
-          setUser(data.user);
-        }
-        
-        localStorage.removeItem('pendingVerificationEmail');
-        toast.success('Email verified! Welcome to DropVault!');
-        
-        setTimeout(() => navigate('/dashboard'), 2000);
-        
-      } else if (data.expired) {
-        setStatus('expired');
-        setMessage(data.error || 'Verification link has expired.');
-        setEmail(data.email || '');
-      } else {
-        setStatus('error');
-        setMessage(data.error || 'Verification failed.');
-      }
-    } catch (error) {
-      console.error('Verification error:', error);
-      setStatus('error');
-      setMessage('Failed to verify email. Please try again.');
-    }
-  };
-
-  const handleResendEmail = async () => {
-    if (!email || resending) return;
-    
-    setResending(true);
-    
-    try {
-      const response = await fetch(`${API_URL}/api/resend-verification/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
+    const verifyEmail = async () => {
+      const token = searchParams.get('token');
       
-      const data = await response.json();
-      
-      if (response.ok && data.success) {
-        toast.success('New verification email sent!');
-        navigate('/verify-pending', { state: { email } });
-      } else {
-        toast.error(data.error || 'Failed to resend email');
+      if (!token) {
+        setError('Invalid verification link');
+        setVerifying(false);
+        return;
       }
-    } catch (error) {
-      console.error('Resend error:', error);
-      toast.error('Failed to resend verification email');
-    } finally {
-      setResending(false);
-    }
-  };
+
+      try {
+        console.log('🔐 Verifying email token...');
+        const response = await authAPI.verifyEmail(token);
+        
+        if (response.data.success) {
+          console.log('✅ Email verified successfully');
+          
+          // Store auth data
+          if (response.data.token) {
+            localStorage.setItem('token', response.data.token);
+          }
+          if (response.data.user) {
+            localStorage.setItem('user', JSON.stringify(response.data.user));
+          }
+          
+          setSuccess(true);
+          toast.success('✅ Email verified successfully!');
+          
+          // Redirect to dashboard after 2 seconds
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 2000);
+        } else {
+          setError(response.data.error || 'Verification failed');
+          toast.error(response.data.error || 'Verification failed');
+        }
+      } catch (err) {
+        console.error('❌ Verification error:', err);
+        const errorMsg = err.response?.data?.error || 'Verification failed';
+        setError(errorMsg);
+        toast.error(errorMsg);
+      } finally {
+        setVerifying(false);
+      }
+    };
+
+    verifyEmail();
+  }, [searchParams, navigate]);
 
   return (
     <div className="auth-page">
@@ -106,89 +69,70 @@ const VerifyEmailPage = () => {
         <div className="auth-bg-shape auth-bg-shape-3"></div>
       </div>
 
-      <div className="verify-pending-container">
-        <div className="verify-pending-card">
-          {status === 'verifying' && (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        padding: '20px'
+      }}>
+        <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          padding: '40px',
+          maxWidth: '500px',
+          width: '100%',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.1)',
+          textAlign: 'center'
+        }}>
+          {verifying && (
             <>
-              <div className="verify-icon verifying">
-                <div className="verify-spinner"></div>
-              </div>
-              <h1>Verifying your email...</h1>
-              <p className="verify-message">Please wait while we verify your email address.</p>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>⏳</div>
+              <h2 style={{ fontSize: '24px', marginBottom: '16px', color: '#1f2937' }}>
+                Verifying your email...
+              </h2>
+              <p style={{ color: '#6b7280' }}>Please wait while we verify your account.</p>
             </>
           )}
 
-          {status === 'success' && (
+          {!verifying && success && (
             <>
-              <div className="verify-icon success">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h1>Email Verified! 🎉</h1>
-              <p className="verify-message">{message}</p>
-              <p className="verify-instructions">Redirecting you to your dashboard...</p>
-              <Link to="/dashboard" className="auth-submit-btn" style={{ marginTop: '1.5rem', display: 'inline-flex', justifyContent: 'center' }}>
-                Go to Dashboard
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: '0.5rem', width: '20px', height: '20px' }}>
-                  <path d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
-              </Link>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>✅</div>
+              <h2 style={{ fontSize: '24px', marginBottom: '16px', color: '#10b981' }}>
+                Email Verified!
+              </h2>
+              <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+                Your email has been verified successfully. Redirecting to dashboard...
+              </p>
+              <div className="btn-spinner" style={{ margin: '0 auto' }}></div>
             </>
           )}
 
-          {status === 'error' && (
+          {!verifying && error && (
             <>
-              <div className="verify-icon error">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h1>Verification Failed</h1>
-              <p className="verify-message error-text">{message}</p>
-              <div className="verify-actions">
-                <Link to="/register" className="auth-submit-btn">Create New Account</Link>
-                <Link to="/login" className="change-email-btn">Back to Login</Link>
-              </div>
-            </>
-          )}
-
-          {status === 'expired' && (
-            <>
-              <div className="verify-icon expired">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h1>Link Expired</h1>
-              <p className="verify-message">{message}</p>
-              {email && (
-                <div className="verify-email-display">
-                  <strong>{email}</strong>
-                </div>
-              )}
-              <div className="verify-actions">
-                <button 
-                  onClick={handleResendEmail}
-                  disabled={resending || !email}
-                  className="auth-submit-btn"
-                >
-                  {resending ? (
-                    <>
-                      <span className="btn-spinner"></span>
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '0.5rem', width: '20px', height: '20px' }}>
-                        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      Send New Link
-                    </>
-                  )}
-                </button>
-                <Link to="/login" className="change-email-btn">Back to Login</Link>
-              </div>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>❌</div>
+              <h2 style={{ fontSize: '24px', marginBottom: '16px', color: '#ef4444' }}>
+                Verification Failed
+              </h2>
+              <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+                {error}
+              </p>
+              <button
+                onClick={() => navigate('/register')}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  background: '#4f46e5',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '16px'
+                }}
+              >
+                Back to Registration
+              </button>
             </>
           )}
         </div>

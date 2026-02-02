@@ -1,14 +1,14 @@
 // src/pages/VerifyPendingPage.jsx
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import '../styles/auth.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://dropvault-2.onrender.com';
-
 const VerifyPendingPage = () => {
-  const location = useLocation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { resendVerification } = useAuth();
   const [email, setEmail] = useState('');
   const [resending, setResending] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -34,37 +34,23 @@ const VerifyPendingPage = () => {
     }
   }, [countdown]);
 
-  const handleResendEmail = async () => {
-    if (countdown > 0 || resending) return;
+  const handleResend = async () => {
+    if (!email || countdown > 0 || resending) return;
     
     setResending(true);
-    
     try {
-      const response = await fetch(`${API_URL}/api/resend-verification/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok && data.success) {
-        toast.success('Verification email sent! Check your inbox.');
+      const result = await resendVerification(email);
+      if (result.success) {
+        toast.success('Verification email sent!');
         setCountdown(60);
       } else {
-        toast.error(data.error || 'Failed to resend email');
+        toast.error(result.error || 'Failed to send email');
       }
     } catch (error) {
-      console.error('Resend error:', error);
-      toast.error('Failed to resend verification email');
+      toast.error('Failed to send email');
     } finally {
       setResending(false);
     }
-  };
-
-  const handleChangeEmail = () => {
-    localStorage.removeItem('pendingVerificationEmail');
-    navigate('/register');
   };
 
   return (
@@ -75,37 +61,57 @@ const VerifyPendingPage = () => {
         <div className="auth-bg-shape auth-bg-shape-3"></div>
       </div>
 
-      <div className="verify-pending-container">
-        <div className="verify-pending-card">
-          <div className="verify-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            <div className="verify-icon-badge">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+      <div className="auth-container">
+        <div className="auth-branding">
+          <div className="auth-branding-content">
+            <Link to="/" className="auth-logo">
+              <div className="auth-logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <span>DropVault</span>
+            </Link>
+            
+            <h1 className="auth-branding-title">
+              Almost There!<br />Check Your Email
+            </h1>
+            
+            <p className="auth-branding-text">
+              We've sent a verification link to your email address.
+            </p>
+          </div>
+        </div>
+
+        <div className="auth-form-section">
+          <div className="auth-form-container">
+            <div className="verify-icon-container">
+              <div className="verify-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
             </div>
-          </div>
 
-          <h1>Check your email</h1>
-          
-          <p className="verify-message">We've sent a verification link to:</p>
-          
-          <div className="verify-email-display">
-            <strong>{email}</strong>
-          </div>
+            <div className="auth-form-header">
+              <h2>Check your email</h2>
+              <p>We sent a verification link to</p>
+            </div>
 
-          <p className="verify-instructions">
-            Click the link in the email to verify your account. 
-            The link will expire in <strong>24 hours</strong>.
-          </p>
+            <div className="verify-email-display">
+              <span>{email}</span>
+            </div>
 
-          <div className="verify-actions">
-            <button 
-              onClick={handleResendEmail}
+            <p className="verify-instructions">
+              Click the link in the email to verify your account. 
+              If you don't see it, check your spam folder.
+            </p>
+
+            <button
+              type="button"
+              className="auth-submit-btn"
+              onClick={handleResend}
               disabled={resending || countdown > 0}
-              className="resend-btn"
             >
               {resending ? (
                 <>
@@ -115,36 +121,29 @@ const VerifyPendingPage = () => {
               ) : countdown > 0 ? (
                 `Resend in ${countdown}s`
               ) : (
-                <>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Resend Email
-                </>
+                'Resend verification email'
               )}
             </button>
 
-            <button onClick={handleChangeEmail} className="change-email-btn">
-              Use different email
+            <button
+              type="button"
+              className="verify-change-email"
+              onClick={() => {
+                localStorage.removeItem('pendingVerificationEmail');
+                navigate('/register');
+              }}
+            >
+              Wrong email? Sign up with a different one
             </button>
-          </div>
 
-          <div className="verify-help">
-            <h4>Didn't receive the email?</h4>
-            <ul>
-              <li>Check your spam or junk folder</li>
-              <li>Make sure you entered the correct email</li>
-              <li>Wait a few minutes and try again</li>
-            </ul>
-          </div>
+            <div className="auth-divider">
+              <span>or</span>
+            </div>
 
-          <div className="verify-footer">
-            <Link to="/login" className="back-to-login">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back to Login
-            </Link>
+            <p className="auth-footer-text">
+              Already verified?{' '}
+              <Link to="/login" className="auth-link">Sign in</Link>
+            </p>
           </div>
         </div>
       </div>
