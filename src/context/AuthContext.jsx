@@ -163,7 +163,7 @@ export const AuthProvider = ({ children }) => {
   const googleLogin = async (code) => {
     try {
       console.log('🔐 Google OAuth login...');
-      const response = await authAPI.googleLogin(code);
+      const response = await authAPI.googleLogin(code, redirect_uri);
       
       if (response.data.success) {
         const { token, user: userData } = response.data;

@@ -70,6 +70,10 @@ const GoogleCallback = () => {
 
         // Call the API
         console.log('🔐 Calling Google login API...');
+
+        const currentOrigin = window.location.origin;
+        const redirectUri = `${currentOrigin}/google-callback`;
+        
         const result = await googleLoginFn(code);
         
         hasProcessedRef.current = true;
