@@ -3,15 +3,23 @@ services:
     name: dropvault-frontend
     env: static
     buildCommand: npm install && npm run build
-    staticPublishPath: ./build
+    staticPublishPath: build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://dropvault-2.onrender.com
+      - key: REACT_APP_GOOGLE_CLIENT_ID
+        value: 74714641191-67h9m9qfcm1731g3424jj57q743i7mhk.apps.googleusercontent.com
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: no-cache
-      - path: /static/*
-        name: Cache-Control
-        value: public, max-age=31536000, immutable
