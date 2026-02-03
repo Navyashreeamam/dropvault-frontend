@@ -9,7 +9,21 @@ import '../styles/settings.css';
 const SettingsPage = () => {
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [storageInfo, setStorageInfo] = useState({ used: 0, total: 10240 });
+  const [storageLoading, setStorageLoading] = useState(true);
+  
+  // ✅ FIX: Storage in bytes (10GB = 10737418240 bytes)
+  const [storageInfo, setStorageInfo] = useState({ 
+    used: 0, 
+    total: 10737418240,  // 10GB in bytes
+    fileCount: 0,
+    breakdown: {
+      documents: 0,
+      images: 0,
+      videos: 0,
+      audio: 0,
+      other: 0
+    }
+  });
   
   const [profileData, setProfileData] = useState({
     name: '',
@@ -38,15 +52,39 @@ const SettingsPage = () => {
     fetchStorageInfo();
   }, [user]);
 
+  // ✅ FIX: Proper storage fetching
   const fetchStorageInfo = async () => {
+    setStorageLoading(true);
     try {
       const response = await dashboardAPI.getStats();
+      console.log('📊 Dashboard response:', response.data);
+      
+      // ✅ FIX: Access correct data path
+      const data = response.data.data || response.data;
+      
+      const used = data.storageUsed || data.storage_used || 0;
+      const total = data.storageTotal || data.storage_total || 10737418240;
+      const fileCount = data.totalFiles || data.total_files || 0;
+      
+      console.log('💾 Storage info:', { used, total, fileCount });
+      
       setStorageInfo({
-        used: response.data.storageUsed || 0,
-        total: response.data.storageTotal || 10240,
+        used: used,
+        total: total,
+        fileCount: fileCount,
+        breakdown: {
+          documents: 0,
+          images: 0,
+          videos: 0,
+          audio: 0,
+          other: used
+        }
       });
     } catch (error) {
-      console.error('Failed to fetch storage info');
+      console.error('Failed to fetch storage info:', error);
+      toast.error('Failed to load storage info');
+    } finally {
+      setStorageLoading(false);
     }
   };
 
@@ -83,8 +121,8 @@ const SettingsPage = () => {
       return;
     }
     
-    if (passwordData.newPassword.length < 6) {
-      toast.error('New password must be at least 6 characters');
+    if (passwordData.newPassword.length < 8) {
+      toast.error('New password must be at least 8 characters');
       return;
     }
     
@@ -121,9 +159,25 @@ const SettingsPage = () => {
     }
   };
 
-  const storagePercent = ((storageInfo.used / storageInfo.total) * 100).toFixed(1);
-  const storageUsedGB = (storageInfo.used / 1024).toFixed(2);
-  const storageTotalGB = (storageInfo.total / 1024).toFixed(0);
+  // ✅ FIX: Helper function to format bytes
+  const formatBytes = (bytes, decimals = 2) => {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + sizes[i];
+  };
+
+  // ✅ FIX: Calculate percentage correctly
+  const storagePercent = storageInfo.total > 0 
+    ? Math.min(((storageInfo.used / storageInfo.total) * 100), 100).toFixed(1)
+    : 0;
+  
+  // ✅ FIX: Format storage sizes properly
+  const storageUsedFormatted = formatBytes(storageInfo.used);
+  const storageTotalFormatted = formatBytes(storageInfo.total);
 
   return (
     <MainLayout>
@@ -159,9 +213,11 @@ const SettingsPage = () => {
                 <input
                   type="email"
                   value={profileData.email}
-                  onChange={(e) => setProfileData({...profileData, email: e.target.value})}
-                  placeholder="Enter your email"
+                  disabled
+                  className="disabled"
+                  title="Email cannot be changed"
                 />
+                <small className="field-hint">Email address cannot be changed</small>
               </div>
               <button type="submit" className="btn-save" disabled={loading}>
                 {loading ? (
@@ -207,7 +263,7 @@ const SettingsPage = () => {
                   type="password"
                   value={passwordData.newPassword}
                   onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
-                  placeholder="Enter new password"
+                  placeholder="Enter new password (min 8 characters)"
                 />
               </div>
               <div className="form-group">
@@ -228,7 +284,7 @@ const SettingsPage = () => {
             </form>
           </div>
 
-          {/* Storage Info */}
+          {/* ✅ FIX: Storage Info - Completely Updated */}
           <div className="settings-card">
             <div className="card-header">
               <div className="card-icon purple">
@@ -237,54 +293,73 @@ const SettingsPage = () => {
                 </svg>
               </div>
               <h2>Storage</h2>
+              {/* ✅ Refresh button */}
+              <button 
+                className="refresh-btn" 
+                onClick={fetchStorageInfo}
+                disabled={storageLoading}
+                title="Refresh storage info"
+              >
+                <svg 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                  className={storageLoading ? 'spinning' : ''}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
             </div>
-            <div className="storage-info">
-              <div className="storage-visual">
-                <div className="storage-circle">
-                  <svg viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="#e2e8f0" strokeWidth="8" />
-                    <circle 
-                      cx="50" cy="50" r="45" 
-                      fill="none" 
-                      stroke="url(#gradient)" 
-                      strokeWidth="8"
-                      strokeLinecap="round"
-                      strokeDasharray={`${storagePercent * 2.83} 283`}
-                      transform="rotate(-90 50 50)"
+            
+            {storageLoading ? (
+              <div className="storage-loading">
+                <div className="loading-spinner"></div>
+                <p>Loading storage info...</p>
+              </div>
+            ) : (
+              <div className="storage-info">
+                <div className="storage-visual">
+                  <div className="storage-circle">
+                    <svg viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="45" fill="none" stroke="#e2e8f0" strokeWidth="8" />
+                      <circle 
+                        cx="50" cy="50" r="45" 
+                        fill="none" 
+                        stroke="url(#gradient)" 
+                        strokeWidth="8"
+                        strokeLinecap="round"
+                        strokeDasharray={`${parseFloat(storagePercent) * 2.83} 283`}
+                        transform="rotate(-90 50 50)"
+                      />
+                      <defs>
+                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#667eea" />
+                          <stop offset="100%" stopColor="#764ba2" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <div className="storage-percent">{storagePercent}%</div>
+                  </div>
+                </div>
+                <div className="storage-details">
+                  <p className="storage-used">
+                    <strong>{storageUsedFormatted}</strong> of <strong>{storageTotalFormatted}</strong> used
+                  </p>
+                  <p className="storage-files">
+                    {storageInfo.fileCount} files stored
+                  </p>
+                  <div className="storage-bar">
+                    <div 
+                      className="storage-bar-fill" 
+                      style={{ width: `${Math.min(parseFloat(storagePercent), 100)}%` }}
                     />
-                    <defs>
-                      <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#667eea" />
-                        <stop offset="100%" stopColor="#764ba2" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  <div className="storage-percent">{storagePercent}%</div>
+                  </div>
+                  <p className="storage-remaining">
+                    {formatBytes(storageInfo.total - storageInfo.used)} available
+                  </p>
                 </div>
               </div>
-              <div className="storage-details">
-                <p className="storage-used">
-                  <strong>{storageUsedGB} GB</strong> of <strong>{storageTotalGB} GB</strong> used
-                </p>
-                <div className="storage-breakdown">
-                  <div className="breakdown-item">
-                    <span className="dot blue"></span>
-                    <span>Documents</span>
-                    <span className="breakdown-size">1.2 GB</span>
-                  </div>
-                  <div className="breakdown-item">
-                    <span className="dot green"></span>
-                    <span>Images</span>
-                    <span className="breakdown-size">800 MB</span>
-                  </div>
-                  <div className="breakdown-item">
-                    <span className="dot purple"></span>
-                    <span>Videos</span>
-                    <span className="breakdown-size">500 MB</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
             <a href="/myfiles" className="btn-manage">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
